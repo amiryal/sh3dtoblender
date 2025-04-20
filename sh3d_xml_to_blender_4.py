@@ -53,9 +53,9 @@ speed = 0.5
 class OpenFile(bpy.types.Operator):
     bl_idname = "object.openfile"
     bl_label = "Open"
-    filename_ext = ".zip"
+    filename_ext = ".sh3d"
     filter_glob: bpy.props.StringProperty(
-        default="*.zip", options={"HIDDEN"}, maxlen=255
+        default="*.sh3d", options={"HIDDEN"}, maxlen=255
     )
 
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
@@ -79,7 +79,8 @@ class OpenFile(bpy.types.Operator):
 
         # clear scene
         bpy.data.scenes["Scene"].unit_settings.scale_length = 1.0
-        bpy.ops.object.mode_set(mode="OBJECT")
+        if bpy.ops.object.mode_set.poll():
+            bpy.ops.object.mode_set(mode="OBJECT")
         bpy.ops.object.select_all(action="SELECT")
         bpy.ops.object.delete(use_global=False)
 
@@ -121,17 +122,7 @@ class OpenFile(bpy.types.Operator):
         xmlRoot = ElementTree.parse(xmlPath).getroot()
 
         # read house
-        filename = os.path.join(xml_path, xmlRoot.get("structure"))
-        bpy.ops.import_scene.obj(filepath=filename)
-        obs = bpy.context.selected_editable_objects[:]
-        bpy.context.view_layer.objects.active = obs[0]
-        bpy.ops.object.join()
-        obs[0].name = xmlRoot.get("name")
-        obs[0].dimensions = obs[0].dimensions * scale
-        obs[0].location = (0.0, 0.0, 0.0)
-        bpy.ops.object.shade_flat()
-        l_house.objects.link(bpy.context.active_object)
-        bpy.context.scene.collection.objects.unlink(bpy.context.active_object)
+        # TODO: import from separate full OBJ export
 
         Level = namedtuple("Level", "id elev ft")
         levels = []
@@ -177,7 +168,7 @@ class OpenFile(bpy.types.Operator):
                 else:
                     locZ = (dimY * scale / 2.0) + lve
 
-                bpy.ops.import_scene.obj(filepath=filename)
+                bpy.ops.wm.obj_import(filepath=filename)
                 obs = bpy.context.selected_editable_objects[:]
                 bpy.context.view_layer.objects.active = obs[0]
                 bpy.ops.object.join()
@@ -192,9 +183,7 @@ class OpenFile(bpy.types.Operator):
                 if "modelMirrored" in element.keys():
                     if element.get("modelMirrored") == "true":
                         bpy.ops.transform.mirror(
-                            constraint_axis=(True, False, False),
-                            orient_type="GLOBAL",
-                            use_proportional_edit=False,
+                            constraint_axis=(True, False, False), orient_type="GLOBAL"
                         )
 
                 if "modelRotation" in element.keys():
@@ -324,7 +313,7 @@ class OpenFile(bpy.types.Operator):
                         bpy.context.active_object.data.energy = 40000.0 * power * scale
                         # bpy.context.active_object.data.shadow_method='RAY_SHADOW'
                         bpy.context.active_object.data.color = bcolor
-                        bpy.context.active_object.data.distance = 10 * scale
+                        bpy.context.active_object.data.cutoff_distance = 10 * scale
                         bpy.context.active_object.parent = owner
                         l_light.objects.link(bpy.context.active_object)
                         bpy.context.scene.collection.objects.unlink(
@@ -473,7 +462,7 @@ class OpenFile(bpy.types.Operator):
         # bpy.data.scenes["Scene"].game_settings.physics_step_sub=5.0
 
         # world settings
-        bpy.data.worlds["World"].light_settings.use_ambient_occlusion = True
+        # bpy.data.worlds["World"].light_settings.use_ambient_occlusion=True
         bpy.data.worlds["World"].light_settings.ao_factor = 0.01
         # bpy.data.worlds["World"].light_settings.use_environment_light=True
         # bpy.data.worlds["World"].light_settings.environment_energy=0.01
