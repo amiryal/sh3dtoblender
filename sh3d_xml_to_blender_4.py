@@ -38,6 +38,8 @@ from zipfile import ZipFile
 from xml.etree import cElementTree as ElementTree
 from collections import namedtuple
 from urllib.parse import unquote
+from glob import iglob
+import re
 
 import os
 import math
@@ -46,7 +48,7 @@ import mathutils
 import struct
 import shutil
 
-scale = 0.05
+scale = 0.01
 speed = 0.5
 
 
@@ -69,6 +71,7 @@ class OpenFile(bpy.types.Operator):
         zip_path = os.path.abspath(zip_name)
         zip_dir = os.path.dirname(zip_path)
         xml_path = os.path.join(zip_dir, "xml")
+        zip_suffixless_path, _ = os.path.splitext(zip_path)
 
         # remove old files
         shutil.rmtree(xml_path, True)
@@ -76,6 +79,29 @@ class OpenFile(bpy.types.Operator):
         # unzip files
         with ZipFile(zip_path, "r") as zip_file:
             zip_file.extractall(xml_path)
+
+        # copy structure and materials
+        shutil.copy(zip_suffixless_path + ".mtl", os.path.join(xml_path, "structure.mtl"))
+        with open(zip_suffixless_path + ".obj", "r") as orig_f, open(os.path.join(xml_path, "structure.obj"), "w") as dest_f:
+            copy_this_line = False
+            for line in orig_f:
+                if line.startswith('g '):
+                    copy_this_line = False
+                if re.match(r'^g (ground|wall|room)_', line):
+                    copy_this_line = True
+                if copy_this_line:
+                    dest_f.write(line)
+        for obj_path in iglob(os.path.join(xml_path, '[0-9]*')):
+            if not os.path.isfile(obj_path):
+                continue
+            with open(obj_path, "rb") as orig_f:
+                if orig_f.read(4).endswith(b'PNG'):
+                    continue
+                orig_f.seek(0)
+                os.unlink(obj_path)
+                with open(obj_path, "wb") as dest_f:
+                    dest_f.write(b'mtllib structure.mtl\n')
+                    shutil.copyfileobj(orig_f, dest_f)
 
         # clear scene
         bpy.data.scenes["Scene"].unit_settings.scale_length = 1.0
@@ -122,7 +148,16 @@ class OpenFile(bpy.types.Operator):
         xmlRoot = ElementTree.parse(xmlPath).getroot()
 
         # read house
-        # TODO: import from separate full OBJ export
+        filename = os.path.join(xml_path, "structure.obj")
+        bpy.ops.wm.obj_import(filepath=filename, global_scale=scale)
+        obs = bpy.context.selected_editable_objects[:]
+        bpy.context.view_layer.objects.active = obs[0]
+        bpy.ops.object.join()
+        obs[0].name = xmlRoot.get("name")
+        obs[0].location = (0.0, 0.0, 0.0)
+        bpy.ops.object.shade_flat()
+        l_house.objects.link(bpy.context.active_object)
+        bpy.context.scene.collection.objects.unlink(bpy.context.active_object)
 
         Level = namedtuple("Level", "id elev ft")
         levels = []
@@ -168,7 +203,7 @@ class OpenFile(bpy.types.Operator):
                 else:
                     locZ = (dimY * scale / 2.0) + lve
 
-                bpy.ops.wm.obj_import(filepath=filename)
+                bpy.ops.wm.obj_import(filepath=filename, global_scale=scale)
                 obs = bpy.context.selected_editable_objects[:]
                 bpy.context.view_layer.objects.active = obs[0]
                 bpy.ops.object.join()
@@ -215,7 +250,6 @@ class OpenFile(bpy.types.Operator):
                 # TODO
 
                 # object position and rotation
-                obs[0].dimensions = (dimX * scale, dimY * scale, dimZ * scale)
                 bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
                 obs[0].location = (locX, locY, locZ)
                 bpy.ops.object.transform_apply(
@@ -462,13 +496,12 @@ class OpenFile(bpy.types.Operator):
         # bpy.data.scenes["Scene"].game_settings.physics_step_sub=5.0
 
         # world settings
-        # bpy.data.worlds["World"].light_settings.use_ambient_occlusion=True
         bpy.data.worlds["World"].light_settings.ao_factor = 0.01
         # bpy.data.worlds["World"].light_settings.use_environment_light=True
         # bpy.data.worlds["World"].light_settings.environment_energy=0.01
 
         bpy.data.scenes["Scene"].unit_settings.system = "METRIC"
-        bpy.data.scenes["Scene"].unit_settings.scale_length = 0.01 / scale
+        # bpy.data.scenes["Scene"].unit_settings.scale_length = 0.01 / scale
         # bpy.data.scenes["Scene"].layers[0]=True
         # bpy.data.scenes["Scene"].layers[1]=True
         # bpy.data.scenes["Scene"].layers[2]=True
