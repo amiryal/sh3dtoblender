@@ -203,7 +203,7 @@ class OpenFile(bpy.types.Operator):
                 else:
                     locZ = (dimY * scale / 2.0) + lve
 
-                bpy.ops.wm.obj_import(filepath=filename, global_scale=scale)
+                bpy.ops.wm.obj_import(filepath=filename)
                 obs = bpy.context.selected_editable_objects[:]
                 bpy.context.view_layer.objects.active = obs[0]
                 bpy.ops.object.join()
@@ -250,6 +250,7 @@ class OpenFile(bpy.types.Operator):
                 # TODO
 
                 # object position and rotation
+                obs[0].dimensions = (dimX * scale, dimY * scale, dimZ * scale)
                 bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
                 obs[0].location = (locX, locY, locZ)
                 bpy.ops.object.transform_apply(
