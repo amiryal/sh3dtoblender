@@ -261,6 +261,10 @@ class OpenFile(bpy.types.Operator):
                     angle = element.get("angle")
                     obs[0].rotation_euler[2] = -float(angle)
 
+                if "pitch" in element.keys():
+                    angle = element.get("pitch")
+                    obs[0].rotation_euler[0] = float(angle) - math.pi
+
                 if "color" in element.keys():
                     color = element.get("color")
                     r = int(color[2:4], 16) / 255.0
