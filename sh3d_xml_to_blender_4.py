@@ -338,9 +338,9 @@ class OpenFile(bpy.types.Operator):
                         g = int(color[4:6], 16) / 255.0
                         b = int(color[6:8], 16) / 255.0
                         bcolor = [r, g, b]
-                        lposx = (float(light.get("x")) - 0.5) * dimX * scale * 2.1
-                        lposy = (float(light.get("y")) - 0.5) * dimY * scale * 2.1
-                        lposz = (float(light.get("z")) - 0.5) * dimZ * scale * 2.1
+                        lposx = (float(light.get("x")) - 0.5) * dimX * scale
+                        lposy = (float(light.get("y")) - 0.5) * dimZ * scale
+                        lposz = (float(light.get("z")) - 0.5) * dimY * scale
 
                         bpy.ops.object.light_add(
                             type="POINT", location=(lposx, lposy, lposz)
@@ -348,8 +348,10 @@ class OpenFile(bpy.types.Operator):
                         bpy.context.active_object.data.energy = 40000.0 * power * scale
                         # bpy.context.active_object.data.shadow_method='RAY_SHADOW'
                         bpy.context.active_object.data.color = bcolor
-                        bpy.context.active_object.data.cutoff_distance = 10 * scale
+                        bpy.context.active_object.data.cutoff_distance = 100 * scale
+                        bpy.context.active_object.data.shadow_soft_size = float(light.get("diameter")) * scale * 100
                         bpy.context.active_object.parent = owner
+                        bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM') # allow to delete parent and keep light position
                         l_light.objects.link(bpy.context.active_object)
                         bpy.context.scene.collection.objects.unlink(
                             bpy.context.active_object
