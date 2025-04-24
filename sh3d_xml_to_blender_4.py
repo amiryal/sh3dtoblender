@@ -81,7 +81,6 @@ class OpenFile(bpy.types.Operator):
             zip_file.extractall(xml_path)
 
         # copy structure and materials
-        shutil.copy(zip_suffixless_path + ".mtl", os.path.join(xml_path, "structure.mtl"))
         with open(zip_suffixless_path + ".obj", "r") as orig_f, open(os.path.join(xml_path, "structure.obj"), "w") as dest_f:
             copy_this_line = False
             for line in orig_f:
@@ -102,6 +101,18 @@ class OpenFile(bpy.types.Operator):
                 with open(obj_path, "wb") as dest_f:
                     dest_f.write(b'mtllib structure.mtl\n')
                     shutil.copyfileobj(orig_f, dest_f)
+        shutil.copy(zip_suffixless_path + ".mtl", os.path.join(xml_path, "structure.mtl"))
+        for image_path in iglob(zip_suffixless_path + "_*.jpeg"):
+            shutil.copy(image_path, xml_path)
+        for mtl_path in iglob(os.path.join(xml_path, "**/*.mtl")):
+            with open(mtl_path, "rb") as orig_f:
+                os.unlink(mtl_path)
+                with open(mtl_path, "wb") as dest_f:
+                    shutil.copyfileobj(open(zip_suffixless_path + ".mtl", "rb"), dest_f)
+                    dest_f.write(b'\n')
+                    shutil.copyfileobj(orig_f, dest_f)
+            for image_path in iglob(zip_suffixless_path + "_*.jpeg"):
+                shutil.copy(image_path, os.path.dirname(mtl_path))
 
         # clear scene
         bpy.data.scenes["Scene"].unit_settings.scale_length = 1.0
@@ -264,71 +275,6 @@ class OpenFile(bpy.types.Operator):
                 if "pitch" in element.keys():
                     angle = element.get("pitch")
                     obs[0].rotation_euler[0] = float(angle) - math.pi
-
-                if "color" in element.keys():
-                    color = element.get("color")
-                    r = int(color[2:4], 16) / 255.0
-                    g = int(color[4:6], 16) / 255.0
-                    b = int(color[6:8], 16) / 255.0
-                    bcolor = [r, g, b, 1.0]
-                    for material in bpy.context.active_object.data.materials:
-                        material.node_tree.nodes["Principled BSDF"].inputs[
-                            0
-                        ].default_value = bcolor
-
-                # search for texture or materials
-                for prop in element:
-                    if prop.tag == "texture":
-                        image = prop.get("image")
-                        for material in bpy.context.active_object.data.materials:
-                            img = bpy.data.images.load(os.path.join(xml_path, image))
-                            material.use_nodes = True
-                            bsdf = material.node_tree.nodes["Principled BSDF"]
-                            texImage = material.node_tree.nodes.new(
-                                "ShaderNodeTexImage"
-                            )
-                            texImage.image = img
-                            material.node_tree.links.new(
-                                bsdf.inputs["Base Color"], texImage.outputs["Color"]
-                            )
-
-                    if prop.tag == "material":
-                        mname = prop.get("name")
-                        if "color" in prop.keys():
-                            color = prop.get("color")
-                            r = int(color[2:4], 16) / 255.0
-                            g = int(color[4:6], 16) / 255.0
-                            b = int(color[6:8], 16) / 255.0
-                            bcolor = [r, g, b, 1.0]
-                            for material in bpy.context.active_object.data.materials:
-                                if mname in material.name:
-                                    material.node_tree.nodes["Principled BSDF"].inputs[
-                                        0
-                                    ].default_value = bcolor
-
-                        # face texture of material
-                        for texture in prop:
-                            if texture.tag == "texture":
-                                image = texture.get("image")
-                                for (
-                                    material
-                                ) in bpy.context.active_object.data.materials:
-                                    if mname in material.name:
-                                        img = bpy.data.images.load(
-                                            os.path.join(xml_path, image)
-                                        )
-                                        material.use_nodes = True
-                                        bsdf = material.node_tree.nodes[
-                                            "Principled BSDF"
-                                        ]
-                                        texImage = material.node_tree.nodes.new(
-                                            "ShaderNodeTexImage"
-                                        )
-                                        texImage.image = img
-                                        material.node_tree.links.new(
-                                            bsdf.inputs["Base Color"],
-                                            texImage.outputs["Color"],
-                                        )
 
             if objectName in ("light"):
                 owner = bpy.context.active_object
