@@ -366,38 +366,13 @@ class OpenFile(bpy.types.Operator):
 
                     bpy.ops.object.camera_add(
                         location=(locX, locY, locZ),
-                        rotation=((-pitch / 8.0) + (-math.pi / 2.0), math.pi, 0),
+                        rotation=(0.5*math.pi-pitch, 0, math.pi-yaw),
                     )
                     l_player.objects.link(bpy.context.active_object)
                     bpy.context.scene.collection.objects.unlink(
                         bpy.context.active_object
                     )
 
-                    bpy.ops.mesh.primitive_cube_add(
-                        location=(locX, locY, locZ - (170.0 * scale / 2.0)),
-                        rotation=(0.0, 0.0, -yaw),
-                    )
-
-                    obs = bpy.context.selected_editable_objects[:]
-                    bpy.context.view_layer.objects.active = obs[0]
-                    obs[0].name = "player"
-                    obs[0].dimensions = (40 * scale, 20 * scale, 170.0 * scale)
-
-                    bpy.data.objects["Camera"].parent = bpy.data.objects["player"]
-                    bpy.data.objects["Camera"].location = (
-                        0.0,
-                        -30.0 * scale,
-                        22 * scale,
-                    )
-
-                    # bpy.data.objects["player"].game.physics_type='CHARACTER'
-                    # bpy.data.objects["player"].game.use_collision_bounds=True
-                    # bpy.data.objects["player"].game.step_height=0.8
-
-                    l_player.objects.link(bpy.context.active_object)
-                    bpy.context.scene.collection.objects.unlink(
-                        bpy.context.active_object
-                    )
 
                     # add logic blocks
                     # obj=bpy.data.objects["player"]
