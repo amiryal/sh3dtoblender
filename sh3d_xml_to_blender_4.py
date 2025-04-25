@@ -145,6 +145,8 @@ class OpenFile(bpy.types.Operator):
 
         l_house = bpy.data.collections.new(name="Home")
         context.scene.collection.children.link(l_house)
+        l_structure = bpy.data.collections.new(name="Structure")
+        l_house.children.link(l_structure)
         l_light = bpy.data.collections.new(name="Light")
         l_house.children.link(l_light)
         l_furniture = bpy.data.collections.new(name="Furniture")
@@ -160,15 +162,10 @@ class OpenFile(bpy.types.Operator):
 
         # read house
         filename = os.path.join(xml_path, "structure.obj")
-        bpy.ops.wm.obj_import(filepath=filename, global_scale=scale)
-        obs = bpy.context.selected_editable_objects[:]
-        bpy.context.view_layer.objects.active = obs[0]
-        bpy.ops.object.join()
-        obs[0].name = xmlRoot.get("name")
-        obs[0].location = (0.0, 0.0, 0.0)
-        bpy.ops.object.shade_flat()
-        l_house.objects.link(bpy.context.active_object)
-        bpy.context.scene.collection.objects.unlink(bpy.context.active_object)
+        bpy.ops.wm.obj_import(filepath=filename, global_scale=scale, use_split_groups=True)
+        for obj in bpy.context.selected_editable_objects:
+            l_structure.objects.link(obj)
+            bpy.context.scene.collection.objects.unlink(obj)
 
         Level = namedtuple("Level", "id elev ft")
         levels = []
